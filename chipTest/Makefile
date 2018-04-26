@@ -15,8 +15,8 @@ INCLUDE_DIR += \
 		-I $(CURDIR)/uart  \
 		-I $(CURDIR)/driver \
 		-I $(CURDIR)/middle \
-        	-I $(CURDIR)/crypt \
-        	-I $(CURDIR)/pool \
+	 	-I $(CURDIR)/crypt \
+		-I $(CURDIR)/pool \
 		-I $(CURDIR)/debugtool
 
 BIN=bm1794_chipTest
@@ -28,10 +28,9 @@ SUBOBJ=$(SUBSRC:%.c=%.o)
 
 $(BIN): $(ROOTOBJ) $(SUBOBJ)
 	$(CC) $(CFLAGS) $(LIB_DIR) $(INCLUDE_DIR) $(LDFLAGS) -o $(BIN) $(ROOTOBJ) $(SUBOBJ)
+	rm -f $(ROOTOBJ) $(SUBOBJ)
 .c.o:
 	$(CC) $(CFLAGS) $(LIB_DIR) $(INCLUDE_DIR) -c $< -o $@
 
 clean:
 	rm -f $(BIN) $(ROOTOBJ) $(SUBOBJ)
-
-

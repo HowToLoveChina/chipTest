@@ -62,9 +62,9 @@ static void *debug_tool_handle()
         pthread_testcancel();
         memset(buffer, 0, FIFO_SIZE);
         len = read(g_dt_info.fd_read, buffer, FIFO_SIZE);
-        
+
         if (len > 0) {
-			
+
             memcpy(&argc, buffer, sizeof(int));
             if (argc <= 0)
                 continue;
@@ -113,11 +113,12 @@ static void usage(char *ret_str)
 	strcat(ret_str, "w	send work               [bmdbg event w 1 start_nonce header]\n");
 	strcat(ret_str, "s 	set register            [bmdbg event s 0x00 0x00000000]\n");
 	strcat(ret_str, "g	get register            [bmdbg event g 0x00]\n");
-	strcat(ret_str, "t	open/close pool         [bmdbg event t 0/1]\n");
+	//strcat(ret_str, "t	open/close pool         [bmdbg event t 0/1]\n");
 	strcat(ret_str, "c	set chip address test   [bmdbg event c address]\n");
-	strcat(ret_str, "1	bandrate setting test   [bmdbg event 1 bandrate]\n");
-	strcat(ret_str, "2	crc register test.      [bmdbg event 2 5/16]\n");
-	strcat(ret_str, "3 	read voltage test       \n");
+    strcat(ret_str, "i	inactive all chip       [bmdbg event i]\n");
+	//strcat(ret_str, "1	bandrate setting test   [bmdbg event 1 bandrate]\n");
+	//strcat(ret_str, "2	crc register test.      [bmdbg event 2 5/16]\n");
+	//strcat(ret_str, "3 	read voltage test       \n");
 	strcat(ret_str, "h 	help info\n");
 }
 
@@ -199,8 +200,18 @@ static int create_event(int argc, char *argv[], char *ret_str)
                return -1;
             }
             uint8_t address = strtol(argv[2], NULL, 16);
-            g_midd_api.ioctl(g_chain[0].fd, IOCTL_CHAIN_INACTIVE, NULL);
+            //g_midd_api.ioctl(g_chain[0].fd, IOCTL_CHAIN_INACTIVE, NULL);
             g_midd_api.ioctl(g_chain[0].fd, IOCTL_SET_ADDRESS, &address);
+            ret_str[0] = '\0';
+            break;
+        }
+        case 'i':   //set chip address test. [dbg event c address]. for testcase 3
+        {
+            if (argc != 2) {
+               sprintf(ret_str, "params error\n");
+               return -1;
+            }
+            g_midd_api.ioctl(g_chain[0].fd, IOCTL_CHAIN_INACTIVE, NULL);
             ret_str[0] = '\0';
             break;
         }
@@ -228,7 +239,7 @@ static int create_event(int argc, char *argv[], char *ret_str)
 				sprintf(ret_str, "param error\n");
 				return -1;
 			}
-			
+
 			if (atoi(argv[2]) == 5){
 				g_crc5_err_enable = !g_crc5_err_enable;
 				printf("g_crc5_err_enable=%d\n", g_crc5_err_enable);

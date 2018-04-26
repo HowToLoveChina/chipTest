@@ -273,7 +273,7 @@ static int targetValidator(uint8_t *target, const uint8_t *work, const uint8_t *
     uint8_t input[140 + 3 + 1344] = { 0 };
     uint8_t tmphash[32] = { 0 };
     uint8_t output[32] = { 0 };
-    
+
     memcpy(input, work, 140);
     memcpy(&input[140], str, 3);
     memcpy(&input[140+3], nonce, 1344);
@@ -387,21 +387,21 @@ static int bm1794_verify_nonce_integrality(struct nonce_rb_format *nonce_rb)
             return -1;
         }
     }
-    
+
     for (int i=0; i<15; i++) {
         if(g_nonce_list[i][1] != g_nonce_list[i+1][1]) {
             applog(LOG_ERR, "chip_addr is different %02x != %02x\n", g_nonce_list[i][1], g_nonce_list[i+1][1]);
             return -1;
         }
     }
-    
+
     for (int i=0; i<15; i++) {
         if(g_nonce_list[i][2] != g_nonce_list[i+1][2]) {
             applog(LOG_ERR, "workID is different %02x != %02x\n", g_nonce_list[i][2], g_nonce_list[i+1][2]);
             return -1;
         }
     }
-    
+
     for (int i=0; i<15; i++) {
         if(g_nonce_list[i][3] != g_nonce_list[i+1][3]) {
             applog(LOG_ERR, "nonceID is different %02x != %02x\n", g_nonce_list[i][3], g_nonce_list[i+1][3]);
@@ -475,7 +475,7 @@ static void *bm1794_get_nonce()
     FILE *fnonce = fopen("fnonce.txt", "a+");
     if (fnonce == NULL) {
         applog(LOG_ERR, "open fnonce failed %s\n", strerror(errno));
-        exit(1);  
+        exit(1);
     }
 
 	pthread_detach(pthread_self());
@@ -524,7 +524,7 @@ static void *bm1794_get_reg()
 		new_item.reg_data = reg.reg_data[0] << 24 | reg.reg_data[1] << 16 | reg.reg_data[2] << 8 | reg.reg_data[3];
 		add_reg_item(new_item);
 
-		
+
 		read_reg_item(&new_item);
         fprintf(freg, "addr:%02x data=%02x%02x%02x%02x chip=%02x\n", reg.reg_addr, reg.reg_data[0], reg.reg_data[1], reg.reg_data[2], reg.reg_data[3], reg.chip_addr);
         fflush(freg);
@@ -679,7 +679,7 @@ void mining_parse_job(char *str, uint8_t *target, size_t target_len,
     randomize(header + i, header_len - N_ZERO_BYTES - i);
     memset(header + header_len - N_ZERO_BYTES, 0, N_ZERO_BYTES);
 }
- 
+
 static void *mining_mode()
 {
     char        line[4096];
@@ -811,7 +811,7 @@ int open_tty_dev(void *arg)
     param.parity = 'N';
     param.cc_vtime = 0;
     param.cc_vmin = 1024;
-	
+
     int fd = g_comm_api.bm_open(chain->devname, &param);
     if (fd < 0) {
         applog(LOG_ERR, "%s open %s failed\n", __func__, chain->devname);
@@ -829,15 +829,18 @@ void close_tty_dev(void *arg)
     g_comm_api.bm_close(chain->fd);
 }
 
+#define UART_DEV    "ttyUSB2"
+
 int chain_init(int chain_id)
 {
     struct std_chain_info *chain = &g_chain[chain_id];
 
-#ifdef WIN32
-    sprintf(chain->devname, "COM%d", tty[chain_id]);
-#else
-    sprintf(chain->devname, "ttyUSB%d", tty[chain_id]);
-#endif
+    //#ifdef WIN32
+    //sprintf(chain->devname, "COM%d", tty[chain_id]);
+    //#else
+    //sprintf(chain->devname, "ttyUSB%d", tty[chain_id]);
+    //#endif
+    memcpy(chain->devname, UART_DEV, sizeof(UART_DEV));
 
     applog(LOG_INFO, "name of the dev: %s", chain->devname);
     chain->bandrate = 19200;
