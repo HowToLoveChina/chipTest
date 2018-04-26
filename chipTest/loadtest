@@ -1,0 +1,2 @@
+gdb bm1794_chipTest -ex "b main" -ex "r"
+
