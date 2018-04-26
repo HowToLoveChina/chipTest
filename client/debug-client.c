@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
     write(fd_write, send_buf, pbuf-send_buf);
     int len = read(fd_read, recv_buf, FIFO_SIZE);
-    print_u8s("receive data", recv_buf, len);
+    print_u8s("receive data(hex format)", recv_buf, len);
 
     ret_code = recv_buf[3] << 24 | recv_buf[2] << 16 | recv_buf[1] << 8 | recv_buf[3];
 
