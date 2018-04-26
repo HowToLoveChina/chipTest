@@ -236,7 +236,7 @@ int uart_recv(int fd, unsigned char *rcv_buf, size_t data_len)
         len = 0;
     }
 
-    if (len > 0) uart_log("received data", rcv_buf, len);
+    //if (len > 0) uart_log("received data", rcv_buf, len);
     return len;
 #endif
 }
@@ -282,7 +282,7 @@ int uart_open(char* port, void *arg)
   struct uart_info *param = (struct uart_info *)arg;
 
   /* input format: com1/com2... */
-  
+
   int comport_number = atoi(port+3);
   if((comport_number>15)||(comport_number<0))
   {

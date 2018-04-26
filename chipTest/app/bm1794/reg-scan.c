@@ -6,7 +6,7 @@
 #include "reg-scan.h"
 #include "util.h"
 
-static struct reg_scan_item_t reg_scan_items[REG_SCAN_NUM]; 
+static struct reg_scan_item_t reg_scan_items[REG_SCAN_NUM];
 static pthread_mutex_t reg_scan_mutex;
 static pthread_t p_reg_scan;
 
@@ -21,7 +21,7 @@ int add_reg_item(struct reg_scan_item_t item)
 		if (reg_scan_items[i].age <= 0)
 		{
 			reg_scan_items[i] = item;
-			fprintf(stdout, "ADD: chainid=%02x chipid=%02x regaddr=%02x regdata=%02x age=%d\n", \
+			fprintf(stdout, "ADD: chainid=0x%02x chipid=0x%02x regaddr=0x%06x regdata=0x%08x age=%d\n", \
 				item.chain_id, item.chip_addr, item.reg_addr, item.reg_data, item.age);
 			ret = 1;
 			break;
@@ -52,7 +52,7 @@ int read_reg_item(struct reg_scan_item_t *item)
 		}
 	}
 	pthread_mutex_unlock(&reg_scan_mutex);
-	
+
 	return ret;
 }
 
@@ -115,7 +115,7 @@ void input_parse(int mode, struct reg_scan_item_t *new_item)
 	fprintf(stdout, "input regaddr\n");
 	scanf("%x", &tmp);
 	new_item->reg_addr = (uint8_t)tmp;
-	
+
 	if (mode == 1)
 	{
 		fprintf(stdout, "input reg_data\n");

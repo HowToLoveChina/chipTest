@@ -65,7 +65,7 @@ static int midd_recv_pmonitor(uint8_t *str, uint32_t len)
     }
 }
 
-/* 
+/*
     mode is used for get mode. if mode=0, get from chip, else get from reg-table
 */
 static int midd_ioctl(int fd, uint32_t oper_type, void *param)
@@ -94,7 +94,7 @@ static void *midd_dispatch_packet(void *param)
     int read_bytes = 1;
     int next_bytes = 1;
     int parse_stage = 0;
-	
+
 	pthread_detach(pthread_self());
 
     while(1)
@@ -117,6 +117,8 @@ static void *midd_dispatch_packet(void *param)
         } else {
             memcpy(p_complete_pkg, rev_buf, read_bytes);
             p_complete_pkg += read_bytes;
+
+            uart_log("received response", complete_pkg, (size_t)(p_complete_pkg-complete_pkg));
 
             out_len = g_chip_api.parse_respond_pkg(complete_pkg, p_complete_pkg-complete_pkg, &rsp_type, out_str, MAX_NONCE_LEN);
             if (out_len > 0) {
@@ -223,23 +225,23 @@ int midd_api_init()
 	g_midd_api.rb_nonce	= (uint8_t *)malloc(100 * 16 * g_chip_api.chip.nonce_len);
 	g_midd_api.rb_pm 	= (uint8_t *)malloc(100 * g_chip_api.chip.pm_len);
 	g_midd_api.rb_reg 	= (uint8_t *)malloc(100 * g_chip_api.chip.reg_len);
-	g_midd_api.rb_bist 	= (uint8_t *)malloc(100 * g_chip_api.chip.bist_len);	
+	g_midd_api.rb_bist 	= (uint8_t *)malloc(100 * g_chip_api.chip.bist_len);
 	g_midd_api.rb_work 	= (uint8_t *)malloc(100 * g_chip_api.chip.work_len);
-	if (g_midd_api.rb_nonce == NULL || 
-		g_midd_api.rb_pm == NULL || 
-		g_midd_api.rb_reg == NULL || 
-		g_midd_api.rb_bist == NULL || 
+	if (g_midd_api.rb_nonce == NULL ||
+		g_midd_api.rb_pm == NULL ||
+		g_midd_api.rb_reg == NULL ||
+		g_midd_api.rb_bist == NULL ||
 		g_midd_api.rb_work == NULL) {
 		printf("%s malloc failed\n", __func__);
 		exit(1);
-	}	
+	}
 	memset(g_midd_api.rb_nonce, 0, 100 * 16 * g_chip_api.chip.nonce_len);
 	memset(g_midd_api.rb_pm, 0, 100 * g_chip_api.chip.pm_len);
 	memset(g_midd_api.rb_reg, 0, 100 * g_chip_api.chip.reg_len);
-	memset(g_midd_api.rb_bist, 0, 100 * g_chip_api.chip.bist_len);	
+	memset(g_midd_api.rb_bist, 0, 100 * g_chip_api.chip.bist_len);
 	memset(g_midd_api.rb_work, 0, 100 * g_chip_api.chip.work_len);
 
-	
+
     rt_ringbuffer_init(&g_midd_api.bm_nonce_rb, g_midd_api.rb_nonce, 100 * 16 * g_chip_api.chip.nonce_len, BLOCK_TYPE);
     rt_ringbuffer_init(&g_midd_api.bm_reg_rb, g_midd_api.rb_reg, 100 * g_chip_api.chip.reg_len, BLOCK_TYPE);
     rt_ringbuffer_init(&g_midd_api.bm_pmonitor_rb, g_midd_api.rb_pm, 100 * g_chip_api.chip.pm_len, BLOCK_TYPE);

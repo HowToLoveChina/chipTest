@@ -107,15 +107,15 @@ static int bm1794_makeup_set_address_cmd(uint8_t *str, uint32_t str_len, uint8_t
     7:5	    4	3:0	    7:0	        7:0	    7:0		                    7:5	        4:0
     TYPE=2	ALL	CMD	    Length=9	ADDR	REGADDR	    REGDATA6a	    Reserved	CRC5
 */
-static int bm1794_makeup_set_config_cmd(uint8_t *str, uint32_t str_len, 
-                        uint8_t all, uint8_t all_core, uint8_t chip_addr, 
+static int bm1794_makeup_set_config_cmd(uint8_t *str, uint32_t str_len,
+                        uint8_t all, uint8_t all_core, uint8_t chip_addr,
                         uint32_t regaddr, uint32_t regdata)
 {
     struct set_config_cmd_t set_config_cmd;
 
     if (str_len < (sizeof(struct set_config_cmd_t) + BM1794_HEADER_LEN)) {
         applog(LOG_ERR, "%s input param error: str length = %u\n", __func__, (uint32_t)(sizeof(set_config_cmd) + BM1794_HEADER_LEN));
-        return -1;  
+        return -1;
     }
 
     memset(&set_config_cmd, 0, sizeof(set_config_cmd));
@@ -125,10 +125,10 @@ static int bm1794_makeup_set_config_cmd(uint8_t *str, uint32_t str_len,
     set_config_cmd.cmd = CMD_SET_CONFIG;
     set_config_cmd.length = INPUT_CMD_LEN_11;
     set_config_cmd.chip_addr = chip_addr;
-    set_config_cmd.regaddr[0] = regaddr;
+    set_config_cmd.regaddr[0] = regaddr >> 16;
     set_config_cmd.regaddr[1] = regaddr >> 8;
-    set_config_cmd.regaddr[2] = regaddr >> 16;
-    set_config_cmd.regdata = regdata;
+    set_config_cmd.regaddr[2] = regaddr >> 0;
+    set_config_cmd.regdata = bswap_32(regdata);
     //uint32_t swap_reg = bswap_32(regdata);
     //memcpy(set_config_cmd.regdata, (uint8_t *)&swap_reg, 4);
     set_config_cmd.crc5 = CRC5((uint8_t *)&set_config_cmd, (INPUT_CMD_LEN_11 - 1) * 8);
@@ -161,9 +161,9 @@ static int bm1794_makeup_get_status_cmd(uint8_t *str, uint32_t str_len, uint8_t 
     get_status_cmd.cmd = CMD_GET_STATUS;
     get_status_cmd.length = INPUT_CMD_LEN_7;
     get_status_cmd.chip_addr = chip_addr;
-    get_status_cmd.regaddr[0] = regaddr;
+    get_status_cmd.regaddr[0] = regaddr >> 16;
     get_status_cmd.regaddr[1] = regaddr >> 8;
-    get_status_cmd.regaddr[2] = regaddr >> 16;
+    get_status_cmd.regaddr[2] = regaddr >> 0;
     get_status_cmd.crc5 = CRC5((uint8_t *)&get_status_cmd, (INPUT_CMD_LEN_7 - 1) * 8);
 
 	if (g_crc5_err_enable){
@@ -179,7 +179,7 @@ static int bm1794_makeup_get_status_cmd(uint8_t *str, uint32_t str_len, uint8_t 
 }
 
 /*
-    Chain Inactive Format    
+    Chain Inactive Format
     Byte0	                Byte1	    Byte2	    Byte3	    Byte4
     7:5	    4	    3:0	    7:0	        7:0	        7:0	        7:5	        4:0
     TYPE=2	ALL=1	CMD	    Length=5	Reserved	Reserved	Reserved	CRC5
@@ -525,7 +525,7 @@ static int bm1794_parse_reg_respond(uint8_t *str, uint32_t str_len, uint8_t *out
         return -1;
     }
 
-    crc5 = CRC5(&str[2], 6 * 8 + 3);
+    crc5 = CRC5(&str[2], 8 * 8 + 3);
     if (crc5 != reg_resp->crc5) {
         applog(LOG_ERR, "%s CRC error crc = %02x\n", __func__, crc5);
         return -1;
@@ -535,6 +535,7 @@ static int bm1794_parse_reg_respond(uint8_t *str, uint32_t str_len, uint8_t *out
     return str_len;
 }
 
+#if 0
 static int bm1794_parse_pmonitor_respond(uint8_t *str, uint32_t str_len, uint8_t *out_str, uint32_t out_len)
 {
     struct pmonitor_respond *pmonitor_resp = (struct pmonitor_respond *)str;
@@ -572,6 +573,7 @@ static int bm1794_parse_bist_respond(uint8_t *str, uint32_t str_len, uint8_t *ou
     memcpy(out_str, &str, str_len);
     return str_len;
 }
+#endif
 
 /*
     Parse response string from UART
@@ -580,7 +582,7 @@ int bm1794_parse_respond_len(uint8_t *str, int len, int *read_len)
 {
     static int state = SEARCH_0XAA;
     int ret = PKG_PARSE_IDLE_STATE;
-    
+
     switch(state)
     {
         case SEARCH_0XAA:
@@ -600,21 +602,21 @@ int bm1794_parse_respond_len(uint8_t *str, int len, int *read_len)
                 state = SEARCH_0XAA;
                 ret = PKG_PARSE_IDLE_STATE;
             }
-            *read_len = 1;
+            *read_len = 9;
             break;
         case SEARCH_PKG_TYPE:
             if (len > 0) {
-                if ((str[0] & 0xf0) == 0xe0) {
-                    *read_len = BM1794_RESP_NONCE_LEN - BM1794_HEADER_LEN - 1;
-                } else if (str[0] == 0xcc) {
-                    *read_len = BM1794_RESP_PM_LEN - BM1794_HEADER_LEN - 1;
+                if ((str[8] & 0x80) == 0x80) {
+                    *read_len = 1;
+                    ret = PKG_PARSE_FINISHED_STATE;
+                    state = SEARCH_0XAA;
                 } else {
-                    *read_len = BM1794_RESP_REG_LEN -BM1794_HEADER_LEN - 1;
+                    *read_len = 43 -9;
+                    ret = PKG_PARSE_MIDDLE_STATE;
+                    state = SEARCH_PKG_BODY;
                 }
-                ret = PKG_PARSE_MIDDLE_STATE;
-                state = SEARCH_PKG_BODY;
             } else {
-                *read_len = 1;  
+                *read_len = 1;
                 ret = PKG_PARSE_IDLE_STATE;
                 state = SEARCH_0XAA;
             }
@@ -648,22 +650,12 @@ int bm1794_parse_respond_pkg(uint8_t *str, int len, int *type, uint8_t *out_str,
 {
     int ret_len = 0;
 
-    if ((str[2] & 0xf0) == 0xe0) {
+    if ((str[10] & 0x80) == 0) {
         *type = NONCE_RESPOND;
 		ret_len = bm1794_parse_nonce_respond(str, len, out_str,out_len);
-    } else if (str[2] == 0xcc) {
-        *type = PMONITOR_RESPOND;
-		ret_len = bm1794_parse_pmonitor_respond(str, len, out_str, out_len);
-    } else if (str[2] == 0xbb){
-		*type = BIST_RESPOND;
-		ret_len = bm1794_parse_bist_respond(str, len, out_str, out_len);
-	}else if (str[2] < 0x80){
+    } else {
         *type = REGISTER_RESPOND;
 		ret_len = bm1794_parse_reg_respond(str, len, out_str, out_len);
-    } else {
-        *type = UNKNOW_RESPOND;
-        applog(LOG_ERR, "%s unknow respond type %02x\n", __func__, str[2]);
-        return -1;
     }
 
     return ret_len;
@@ -800,7 +792,7 @@ int bm1794_ioctl_regtable(uint32_t oper_type, void *param)
 			break;
 		}
 		case IOCTL_SET_REG:
-		{            
+		{
 			struct base_type_t *item = (struct base_type_t *)param;
             bm1794_set_reg_table(item->addr, item->data);
 			break;
@@ -821,15 +813,15 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         {
             union bm1794_reg reg_data;
             struct base_param32_t *item = (struct base_param32_t *)param;
-            
+
             bm1794_get_reg_table(REG_MISC_CONTROL, &reg_data.reg_bin);
             reg_data.misc_control.bt8d = get_bt8d_from_baud(item->param) ;
-            
+
             bm1794_set_reg_table(REG_MISC_CONTROL, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_MISC_CONTROL, reg_data.reg_bin);
         }
         case IOCTL_GET_BAND:
-        { 
+        {
             struct base_param_t *item = (struct base_param_t *)param;
             return bm1794_makeup_get_status_cmd(str, str_len, item->all, item->chip_addr, REG_MISC_CONTROL);
         }
@@ -843,7 +835,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         {
             union bm1794_reg reg_data;
             struct base_param32_t *item = (struct base_param32_t *)param;
-            
+
             bm1794_get_reg_table(REG_MISC_CONTROL, &reg_data.reg_bin);
             reg_data.misc_control.invclko = item->param;
             bm1794_set_reg_table(REG_MISC_CONTROL, reg_data.reg_bin);
@@ -854,7 +846,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         {
             union bm1794_reg reg_data;
             struct base_param32_t *item = (struct base_param32_t *)param;
-            
+
             bm1794_get_reg_table(REG_MISC_CONTROL, &reg_data.reg_bin);
             reg_data.misc_control.hashrate_tws = item->param;
             bm1794_set_reg_table(REG_MISC_CONTROL, reg_data.reg_bin);
@@ -909,7 +901,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
 
             bm1794_get_reg_table(REG_PLL_PARAMETER, &reg_data.reg_bin);
             bm1794_get_plldata(item->param, &reg_data.reg_bin);
-            
+
             bm1794_set_reg_table(REG_PLL_PARAMETER, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_PLL_PARAMETER, reg_data.reg_bin);
         }
@@ -920,7 +912,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
 
             bm1794_get_reg_table(REG_TICKET_MASK, &reg_data.reg_bin);
             reg_data.ticket_mask.ticket_mask = item->param;
-            
+
             bm1794_set_reg_table(REG_TICKET_MASK, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_TICKET_MASK, reg_data.reg_bin);
         }
@@ -952,7 +944,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             reg_data.general_i2c_command.rwctrl = 0;
             reg_data.general_i2c_command.devaddr = item->dev_addr;
             reg_data.general_i2c_command.regaddr = item->reg_addr;
-            
+
             bm1794_set_reg_table(REG_GENERAL_I2C_COMMAND, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_GENERAL_I2C_COMMAND, reg_data.reg_bin);
         }
@@ -960,24 +952,24 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         {
             union bm1794_reg reg_data;
             struct i2c_write_t *item = (struct i2c_write_t *)param;
-            
+
             bm1794_get_reg_table(REG_GENERAL_I2C_COMMAND, &reg_data.reg_bin);
             reg_data.general_i2c_command.rwctrl = 1;
             reg_data.general_i2c_command.devaddr = item->dev_addr;
             reg_data.general_i2c_command.regaddr = item->reg_addr;
             reg_data.general_i2c_command.data = item->reg_data;
-            
-            bm1794_set_reg_table(REG_GENERAL_I2C_COMMAND, reg_data.reg_bin);   
+
+            bm1794_set_reg_table(REG_GENERAL_I2C_COMMAND, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_GENERAL_I2C_COMMAND, reg_data.reg_bin);
         }
 		case IOCTL_SET_TXOK_EN:
 		{
             union bm1794_reg reg_data;
             struct base_param32_t *item = (struct base_param32_t *)param;
-            
+
             bm1794_get_reg_table(REG_NONCE_TX_OK, &reg_data.reg_bin);
             reg_data.nonce_tx_ok.txok_en = item->param;
-            
+
             bm1794_set_reg_table(REG_NONCE_TX_OK, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_NONCE_TX_OK, reg_data.reg_bin);
 		}
@@ -985,10 +977,10 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         {
             union bm1794_reg reg_data;
             struct base_param32_t *item = (struct base_param32_t *)param;
-            
+
             bm1794_get_reg_table(REG_NONCE_TX_OK, &reg_data.reg_bin);
             reg_data.nonce_tx_ok.nonce_txok = item->param;
-            
+
             bm1794_set_reg_table(REG_NONCE_TX_OK, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_NONCE_TX_OK, reg_data.reg_bin);
         }
@@ -1004,7 +996,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             bm1794_get_reg_table(REG_CORE_TIMEOUT, &reg_data.reg_bin);
             reg_data.core_timeout.core_timeout = item->param;
             bm1794_set_reg_table(REG_CORE_TIMEOUT, reg_data.reg_bin);
-            return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_CORE_TIMEOUT, reg_data.reg_bin);    
+            return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_CORE_TIMEOUT, reg_data.reg_bin);
         }
         case IOCTL_SET_IO_DRIVE_STRENGTH:
         {
@@ -1019,7 +1011,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             reg_data.io_drive_strength.nrsto_ds = item->nrsto_ds;
             reg_data.io_drive_strength.bo_ds = item->bo_ds;
             reg_data.io_drive_strength.co_ds = item->co_ds;
-            
+
             bm1794_set_reg_table(REG_IO_DRIVE_STRENGTH, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->basep.all, 0, item->basep.chip_addr, REG_IO_DRIVE_STRENGTH, reg_data.reg_bin);
         }
@@ -1032,7 +1024,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
                 reg_data.chip_status.clrerr = 0;
             else
                 reg_data.chip_status.clrerr = 1;
-        
+
             bm1794_set_reg_table(REG_CHIP_STATUS, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_CHIP_STATUS, reg_data.reg_bin);
         }
@@ -1047,7 +1039,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             struct base_param32_t *item = (struct base_param32_t *)param;
             bm1794_get_reg_table(REG_TIME_OUT, &reg_data.reg_bin);
             reg_data.time_out.nonce_tx_timeout = item->param;
-            
+
             bm1794_set_reg_table(REG_TIME_OUT, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_TIME_OUT, reg_data.reg_bin);
         }
@@ -1057,7 +1049,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             struct base_param32_t *item = (struct base_param32_t *)param;
             bm1794_get_reg_table(REG_TIME_OUT, &reg_data.reg_bin);
             reg_data.time_out.timeout = item->param;
-            
+
             bm1794_set_reg_table(REG_TIME_OUT, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_TIME_OUT, reg_data.reg_bin);
         }
@@ -1067,7 +1059,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             struct base_param8_t *item = (struct base_param8_t *)param;
             bm1794_get_reg_table(REG_PMONITOR_CTRL, &reg_data.reg_bin);
             reg_data.pmonitor_ctrl.vtsel = item->param;
-            
+
             bm1794_set_reg_table(REG_PMONITOR_CTRL, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_PMONITOR_CTRL, reg_data.reg_bin);
         }
@@ -1077,17 +1069,17 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             struct base_param8_t *item = (struct base_param8_t *)param;
             bm1794_get_reg_table(REG_PMONITOR_CTRL, &reg_data.reg_bin);
             reg_data.pmonitor_ctrl.coreid = item->param;
-            
+
             bm1794_set_reg_table(REG_PMONITOR_CTRL, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_PMONITOR_CTRL, reg_data.reg_bin);
         }
         case IOCTL_SET_ANALOG_MUX:
-        {    
+        {
             union bm1794_reg reg_data;
             struct base_param8_t *item = (struct base_param8_t *)param;
             bm1794_get_reg_table(REG_ANALOG_MUX_CONTROL, &reg_data.reg_bin);
             reg_data.analog_mux_control.diode_vdd_mux_sel = item->param;
-            
+
             bm1794_set_reg_table(REG_ANALOG_MUX_CONTROL, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_ANALOG_MUX_CONTROL, reg_data.reg_bin);
         }
@@ -1097,8 +1089,8 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             struct base_param32_t *item = (struct base_param32_t *)param;
             bm1794_get_reg_table(REG_START_NONCE_OFFSET, &reg_data.reg_bin);
             reg_data.start_nonce_offset.sno = item->param;
-        
-            bm1794_set_reg_table(REG_START_NONCE_OFFSET, reg_data.reg_bin);  
+
+            bm1794_set_reg_table(REG_START_NONCE_OFFSET, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_START_NONCE_OFFSET, reg_data.reg_bin);
         }
         case IOCTL_SET_TXN_DATA:
@@ -1108,8 +1100,8 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             bm1794_get_reg_table(REG_TXN_DATA, &reg_data.reg_bin);
             reg_data.txn_data.txn_shalow = item->param1;
             reg_data.txn_data.txn_zero = item->param2;
-        
-            bm1794_set_reg_table(REG_TXN_DATA, reg_data.reg_bin);  
+
+            bm1794_set_reg_table(REG_TXN_DATA, reg_data.reg_bin);
             return bm1794_makeup_set_config_cmd(str, str_len, item->all, 0, item->chip_addr, REG_TXN_DATA, reg_data.reg_bin);
         }
         case IOCTL_SET_BIST_SETUP:
@@ -1130,17 +1122,17 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
         case IOCTL_SET_BIST_WAIT:
         {
             struct set_bist_wait_t *item = (struct set_bist_wait_t *)param;
-            return bm1794_makeup_bist_wait_cmd(item->basep.all, item->basep.chip_addr, item->wait_cycle, str, str_len); 
+            return bm1794_makeup_bist_wait_cmd(item->basep.all, item->basep.chip_addr, item->wait_cycle, str, str_len);
         }
         case IOCTL_SET_BIST_READ:
         {
             struct base_param_t *item = (struct base_param_t *)param;
-            return bm1794_makeup_bist_read_cmd(item->all, item->chip_addr, str, str_len); 
+            return bm1794_makeup_bist_read_cmd(item->all, item->chip_addr, str, str_len);
         }
         case IOCTL_SET_BIST_DISABLE:
         {
             struct base_param_t *item = (struct base_param_t *)param;
-            return bm1794_makeup_bist_disable_cmd(item->all, item->chip_addr, str, str_len); 
+            return bm1794_makeup_bist_disable_cmd(item->all, item->chip_addr, str, str_len);
         }
         default:
         {
@@ -1148,7 +1140,7 @@ int bm1794_pack_ioctl_pkg(uint8_t *str, uint32_t str_len, uint32_t oper_type, vo
             break;
         }
     }
-    
+
     return 0;
 }
 
@@ -1186,4 +1178,3 @@ int bm1794_soc_exit()
 {
     return 0;
 }
-

@@ -20,8 +20,8 @@
 #define BM1794_CRC5_LEN         1
 #define BM1794_WORK_LEN        	46
 
-#define BM1794_RESP_NONCE_LEN       	(93)
-#define BM1794_RESP_REG_LEN             (9)
+#define BM1794_RESP_NONCE_LEN       	(45)
+#define BM1794_RESP_REG_LEN             (11)
 #define BM1794_RESP_PM_LEN              (9)
 #define BM1794_RESP_BIST_LEN            (11)
 
@@ -32,7 +32,7 @@ enum ret_type
     RET_FAIL,
 };
 
-/***************SPEC. Top Register Defination****************/ 
+/***************SPEC. Top Register Defination****************/
 enum bm1794_reg_address
 {
     REG_CHIP_ADDRESS                = 0x00,
@@ -112,7 +112,7 @@ struct bm1794_misc_control
     uint32_t reserve1           :5;
 };
 
-// General I2C Command.  default: 0x01000000 
+// General I2C Command.  default: 0x01000000
 struct bm1794_general_i2c_command
 {
     uint32_t data               :8;
@@ -137,7 +137,7 @@ struct bm1794_nonce_tx_ok
 // Core Time Out.       default: 0xffffffff
 struct bm1794_core_timeout
 {
-    uint32_t core_timeout;  
+    uint32_t core_timeout;
 };
 
 // IO Drive Strength Configuration.     default: 0x02110211
@@ -207,7 +207,7 @@ struct bm1794_txn_data
     uint32_t reaseve    :30;
 };
 
-union bm1794_reg 
+union bm1794_reg
 {
     struct bm1794_chip_addr                 chip_addr;
     struct bm1794_hash_rate                 hash_rate;
@@ -379,7 +379,7 @@ struct bist_write_wait_cmd_t
     uint8_t wr_data[6];
     uint8_t write_repeat_num;
     uint8_t crc5        :5;
-    uint8_t reserve2    :3;    
+    uint8_t reserve2    :3;
 } __attribute__((packed, aligned(1)));
 
 struct bist_write_wait_read_cmd_t
@@ -392,7 +392,7 @@ struct bist_write_wait_read_cmd_t
     uint8_t wr_data[6];
     uint8_t reserve1;
     uint8_t crc5        :5;
-    uint8_t reserve2    :3;    
+    uint8_t reserve2    :3;
 } __attribute__((packed, aligned(1)));
 
 struct bist_wait_cmd_t
@@ -404,7 +404,7 @@ struct bist_wait_cmd_t
     uint8_t chip_addr;
     uint8_t wait_cycle[5];
     uint8_t crc5        :5;
-    uint8_t reserve2    :3;    
+    uint8_t reserve2    :3;
 } __attribute__((packed, aligned(1)));
 
 struct bist_read_cmd_t
@@ -416,7 +416,7 @@ struct bist_read_cmd_t
     uint8_t chip_addr;
     uint8_t reserve1;
     uint8_t crc5        :5;
-    uint8_t reserve2    :3;    
+    uint8_t reserve2    :3;
 } __attribute__((packed, aligned(1)));
 
 struct bist_disable_cmd_t
@@ -428,23 +428,23 @@ struct bist_disable_cmd_t
     uint8_t chip_addr;
     uint8_t reserve1;
     uint8_t crc5        :5;
-    uint8_t reserve2    :3;    
+    uint8_t reserve2    :3;
 } __attribute__((packed, aligned(1)));
 
 struct reg_respond
 {
 	uint8_t header_aa;
 	uint8_t header_55;
-    uint8_t reg_addr;
     uint8_t reg_data[4];
     uint8_t chip_addr;
+    uint8_t reg_addr[3];
     uint8_t crc5        :5;
     uint8_t reserve     :3;
 } __attribute__((packed, aligned(1)));
 
 struct reg_rb_format
 {
-	uint8_t reg_addr;
+	uint8_t reg_addr[3];
 	uint8_t reg_data[4];
 	uint8_t chip_addr;
 } __attribute__((packed, aligned(1)));

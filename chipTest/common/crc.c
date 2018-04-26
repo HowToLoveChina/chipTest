@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include "crc.h"
 
@@ -96,6 +97,16 @@ unsigned char CRC5(unsigned char *ptr, unsigned char len)
     unsigned char crcout[5] = {1, 1, 1, 1, 1};
     unsigned char din = 0;
 
+    unsigned char *nptr = NULL;
+    if ((len % 8) == 0) {
+        unsigned char old_len = len;
+        len = (len +31) & 0xe0;
+        nptr = (unsigned char *)malloc(len/8);
+        memset(nptr, 0, len/8);
+        memcpy(nptr, ptr, old_len/8);
+        ptr = nptr;
+    }
+
     j = 0x80;
     k = 0;
     for (i = 0; i < len; i++)
@@ -145,6 +156,7 @@ unsigned char CRC5(unsigned char *ptr, unsigned char len)
     {
         crc |= 0x01;
     }
+
+    if (nptr) free(nptr);
     return crc;
 }
-

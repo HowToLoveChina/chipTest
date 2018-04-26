@@ -36,7 +36,7 @@ uint8_t g_nonce_list[16][91];
 struct std_chain_info g_chain[MAX_CHAIN_NUM];
 
 /**************test config***************/
-int miner_enable = 1;
+int miner_enable = 0;
 /**************const config***************/
 int tty[MAX_CHAIN_NUM] = {0};
 
@@ -520,8 +520,8 @@ static void *bm1794_get_reg()
 		new_item.age = 3;
 		new_item.chain_id = chain_id;
 		new_item.chip_addr = reg.chip_addr;
-		new_item.reg_addr = reg.reg_addr;
-		new_item.reg_data = reg.reg_data[0] << 24 | reg.reg_data[1] << 16 | reg.reg_data[2] << 8 | reg.reg_data[3];
+		new_item.reg_addr = reg.reg_addr[0] << 16 | reg.reg_addr[1] << 8 | reg.reg_addr[2];
+        new_item.reg_data = reg.reg_data[0] << 24 | reg.reg_data[1] << 16 | reg.reg_data[2] << 8 | reg.reg_data[3];
 		add_reg_item(new_item);
 
 
